@@ -2,6 +2,8 @@ package com.splunk.sharedmc;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.security.KeyManagementException;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -46,13 +48,17 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
     private StringBuilder messagesToSend = new StringBuilder();
     private StringBuilder messagesOnRunway;
 
+    private String hostname = "";
+
+
+
     /**
-     * Constructor. Determines which Splunk instance this will connect to based on the host:port passed in. Set up a
-     * shutdown hook to send any remaining messages to Splunk on close.
+     * Constructor. Determines which Splunk instance this will connect to based on the host:port
+     * passed in. Set up a shutdown hook to send any remaining messages to Splunk on close.
      *
-     * @param host Host of Splunk to connect to.
-     * @param port Port of Splunk to connect to.
-     * @param server Name of Minecraft server.
+     * @param host             Host of Splunk to connect to.
+     * @param port             Port of Splunk to connect to.
+     * @param server           Name of Minecraft server.
      * @param startImmediately If true, creates a thread and starts this Splunk on construction.
      */
     public SingleSplunkConnection(String host, int port, String server, String token, boolean startImmediately) {
@@ -62,6 +68,14 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
         httpClient = HttpClients.createDefault();
 
         this.server = server;
+
+        try{
+            hostname = InetAddress.getLocalHost().getHostName();
+        }
+        catch (UnknownHostException e) {
+
+
+        }
 
         addFlushShutdownHook();
 
@@ -89,11 +103,17 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
      */
     @Override
     public void sendToSplunk(String message) {
+
+        // append the name of the server to the event record.
+        message = message + " server=" + (this.server).trim();
+
         JSONObject event = new JSONObject();
 
-        DateFormat df_8601 = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ");
-
-        message = df_8601.format(new Date()) + ' ' + message + " server=" + (this.server).trim();
+        // Create the Splunk HTTP Event Collector packet as defined in http://dev.splunk.com/view/event-collector/SP-CAAAE6M
+        event.put("time", System.currentTimeMillis() / 1000L);
+        event.put("host", hostname);
+        event.put("source","minecraft-app");
+        event.put("sourcetype","minecraft_log");
         event.put("event", message);
 
         messagesToSend.append(event.toString());
@@ -105,12 +125,12 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
         if (messagesOnRunway == null && messagesToSend.length() > 0) {
             messagesOnRunway = messagesToSend;
             messagesToSend = new StringBuilder();
-        }else{
+        } else {
             // no messages to send, so safe to say messages have been sent.
             return messagesOnRunway == null;
         }
         try {
-           // logger.info("Sending data to splunk...");
+            // logger.info("Sending data to splunk...");
             HttpPost post = new HttpPost(url);
             post.setHeader("Authorization", "Splunk " + token);
             StringEntity entity = new StringEntity(messagesOnRunway.toString(), ContentType.APPLICATION_JSON);
@@ -139,7 +159,8 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
     }
 
     /**
-     * Adds a shutdown hook that flushes this classes data buffer ({@code data}) by sending it to Splunk.
+     * Adds a shutdown hook that flushes this classes data buffer ({@code data}) by sending it to
+     * Splunk.
      */
     private void addFlushShutdownHook() {
         Runtime.getRuntime().addShutdownHook(
