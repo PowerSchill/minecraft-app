@@ -1,151 +1,75 @@
 package com.splunk.sharedmc.loggable_events;
 
-import com.splunk.sharedmc.Point3dLong;
-import com.splunk.sharedmc.Utilities;
-
+import com.splunk.sharedmc.utilities.Entity;
+import com.splunk.sharedmc.utilities.Instrument;
+import com.splunk.sharedmc.utilities.Point3d;
 
 /**
- * Almost pojo with fields for information that might be associated with a block event.
+ * Created by powerschill on 7/25/16.
  */
 public class LoggableDeathEvent extends AbstractLoggableEvent {
-    public static final String VICTIM = "victim";
-    public static final String KILLER = "killer";
-    public static final String DAMAGE_SOURCE = "damage_source";
-    public static final String INSTRUMENT = "killing_instrument";
 
-    private String _killer;
-    private String _victim;
-    private String _damageSource;
-    private final DeathEventAction action;
-    private String _instrument;
+    private Instrument weapon;
+    private String cause;
+    private Entity killer;
+    private Entity victim;
 
-    /**
-     * Constructor.
-     *
-     * @param action The type of block action this represents, e.g. 'break'.
-     */
-    public LoggableDeathEvent(DeathEventAction action, long gameTime, String worldName, Point3dLong location) {
-        super(LoggableEventType.DEATH, gameTime, worldName, location);
-        this.action = action;
-        this.addField(ACTION, action.asString());
+    public LoggableDeathEvent(long gameTime, String minecraft_server, String world, Point3d dest, DeathEventAction action) {
+        super(gameTime, minecraft_server, world, dest, "death", action.asString());
     }
 
-    public String getVictim() {
-        return _victim;
+    public Instrument getWeapon() {
+        return this.weapon;
     }
 
-    public LoggableDeathEvent setVictim(String victim) {
-        this._victim = victim;
-        this.addField(VICTIM, Utilities.sanitizeString(this._victim));
-        return this;
+    public void setWeapon(Instrument weapon) {
+        this.weapon = weapon;
     }
 
-    public String getKiller() {
-        return _killer;
+    public String getCause() {
+        return this.cause;
     }
 
-    public LoggableDeathEvent setKiller(String killer) {
-        this._killer = killer;
-        this.addField(KILLER, Utilities.sanitizeString(this._killer));
-        return this;
+    public void setCause(String cause) {
+        this.cause = cause;
     }
 
-    public String getDamageSource() {
-        return _damageSource;
+    public Entity getKiller() {
+        return this.killer;
     }
 
-    public LoggableDeathEvent setDamageSource(String damageSource) {
-        this._damageSource = damageSource;
-        this.addField(DAMAGE_SOURCE, Utilities.sanitizeString(this._damageSource));
-        return this;
+    public void setKiller(Entity entity) {
+        this.killer = entity;
     }
 
-    public String getInstrument() {
-        return _instrument;
+    public void setKiller(String type, String name) {
+        Entity entity = new Entity(type, name);
+        setKiller(entity);
     }
 
-    public LoggableDeathEvent setInstrument(String instrument) {
-        this._instrument = instrument;
-        this.addField(INSTRUMENT, Utilities.removeSpaces(this._instrument));
-        return this;
+    public Entity getVictim() {
+        return this.victim;
     }
 
-    public DeathEventAction getAction() {
-        return action;
+    public void setVictim(Entity entity) {
+        this.victim = entity;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-
-        final LoggableDeathEvent that = (LoggableDeathEvent) o;
-
-        if (action != that.action) {
-            return false;
-        }
-        if (getCoordinates() != null ? !getCoordinates().equals(that.getCoordinates()) :
-                that.getCoordinates() != null) {
-            return false;
-        }
-
-        if (_killer != null ? !_killer.equals(that._killer) : that._killer != null) {
-            return false;
-        }
-
-        if (_damageSource != null ? !_damageSource.equals(that._damageSource) : that._damageSource != null) {
-            return false;
-        }
-
-        if (_instrument != null ? !_instrument.equals(that._instrument) : that._instrument != null) {
-            return false;
-        }
-
-        if (this.getWorldTime() != that.getWorldTime()) {
-            return false;
-        }
-        if (getWorldName() != null ? !getWorldName().equals(that.getWorldName()) : that.getWorldName() != null) {
-            return false;
-        }
-
-        return true;
+    public void setVictim(String type, String name) {
+        Entity entity = new Entity(type, name);
+        setVictim(entity);
     }
 
-    @Override
-    public int hashCode() {
-        int result = _killer != null ? _killer.hashCode() : 0;
-        result = 31 * result + (action != null ? action.hashCode() : 0);
-        result = 31 * result + (_victim != null ? _victim.hashCode() : 0);
-        result = 31 * result + (_damageSource != null ? _damageSource.hashCode() : 0);
-        result = 31 * result + (_instrument != null ? _instrument.hashCode() : 0);
-        return result;
-    }
-
-    /**
-     * Different types of actions that can occur as part of a DeathEvent.
-     */
     public enum DeathEventAction {
-        MOB_DIED("mob_died"),
-        PLAYER_DIED("player_died");
+        CREATURE("creature_death"),
+        PLAYER("player_death");
 
-        /**
-         * The name of the action.
-         */
         private final String action;
 
         DeathEventAction(String action) {
             this.action = action;
         }
 
-        /**
-         * String representation of the action.
-         *
-         * @return The action in friendly String format.
-         */
         public String asString() {
             return action;
         }

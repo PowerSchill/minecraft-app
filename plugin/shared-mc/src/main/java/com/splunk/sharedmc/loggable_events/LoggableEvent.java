@@ -1,55 +1,75 @@
 package com.splunk.sharedmc.loggable_events;
 
-import com.splunk.sharedmc.Point3dLong;
+import com.splunk.sharedmc.utilities.Point3d;
 
 public interface LoggableEvent {
+
+    /**
+     * @return the full in-game time on this world
+     */
+    long getGameTime();
+
+    /**
+     * @param gameTime the full in-game time on this world
+     */
+    void setGameTime(long gameTime);
+
+
+    /**
+     * @return the name of user-defined Minecraft server
+     */
+    String getMinecraftServer();
+
+    /**
+     * @param minecraft_server the name of user-defined Minecraft server
+     */
+    void setMinecraftServer(String minecraft_server);
+
+    /**
+     * @return the name of the world
+     */
+    String getWorld();
+
+    /**
+     * @param world the name of the world
+     */
+    void setWorld(String world);
+
+    /**
+     * @return the three dimensional location of the event
+     */
+    Point3d getDest();
+
+    /**
+     * @param dest the three dimensional location of the event
+     */
+    void setDest(Point3d dest);
+
+    /**
+     * @return the category of the event
+     */
+    String getCategory();
+
+    /**
+     * @param category the category of the event
+     */
+    void setCategory(String category);
+
+    /**
+     * @return the event action
+     */
+    String getAction();
+
+    /**
+     * @param action the event action
+     */
+    void setAction(String action);
 
     /**
      * Gets a JSON String of this object.
      *
      * @return JSON representing this object.
      */
-    String toJson();
+    String toJSON();
 
-    /**
-     * Get the type of event that occurred, used to categorize events.
-     *
-     * @return The type of event that occurred.
-     */
-    LoggableEventType getType();
-
-    /**
-     * System time in milliseconds that this event was initialized.
-     *
-     * @return System time in milliseconds that this event was initialized.
-     */
-    long getTime();
-
-    /**
-     * In-game time.
-     *
-     * @return A long representing in-game time.
-     */
-    long getWorldTime();
-
-    /**
-     * Gets the name of the current world.
-     *
-     * @return Name of the current world.
-     */
-    String getWorldName();
-
-    /**
-     * String representation of where the event occurred.
-     *
-     * @return If the event occurred at a location, the location it occurred at.
-     */
-    Point3dLong getCoordinates();
-
-    /**
-     * Gets a String representation of where this event occurred.
-     *
-     * @return A String ofwhere this event occurred.
-     */
-    String getLocation();
 }

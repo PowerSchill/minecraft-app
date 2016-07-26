@@ -1,142 +1,165 @@
 package com.splunk.spigot.eventloggers;
 
-import java.util.Properties;
+import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
+import com.splunk.sharedmc.loggable_events.LoggableBlockEvent;
+import com.splunk.sharedmc.loggable_events.LoggableBlockEvent.BlockEventAction;
+import com.splunk.sharedmc.utilities.Instrument;
+import com.splunk.sharedmc.utilities.Point3d;
 
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.enchantments.Enchantment;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-
-import com.splunk.sharedmc.Point3dLong;
-import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
-import com.splunk.sharedmc.loggable_events.LoggableBlockEvent;
-import com.splunk.sharedmc.loggable_events.LoggableBlockEvent.BlockEventAction;
-
 import org.bukkit.inventory.ItemStack;
+
+import java.util.Properties;
+
 
 /**
  * Handles the logging of block events.
  */
 public class BlockEventLogger extends AbstractEventLogger implements Listener {
 
+
     public BlockEventLogger(Properties properties) {
         super(properties);
     }
 
+
     /**
-     * Captures Block BreakEvents.
      *
-     * @param event The captured BreakEvent.
+     * @param event
      */
     @EventHandler
     public void captureBreakEvent(BlockBreakEvent event) {
+        // Only log event if it is successful
+        if (!event.isCancelled())
+            logAndSend(getLoggableBlockEvent(BlockEventAction.BREAK, event));
 
-        // only log successful log breaks
-        if (!event.isCancelled()) {
-
-            logAndSend(getLoggableBlockBreakPlaceEvent(BlockEventAction.BREAK, event, event.getPlayer().getInventory().getItemInMainHand().getType().toString()));
-        }
     }
 
-    /**
-     * Captures Block PlaceEvents and sends them to the message preparer.
-     *
-     * @param event The captured PlaceEvent.
-     */
     @EventHandler
     public void capturePlaceEvent(BlockPlaceEvent event) {
-        logAndSend(getLoggableBlockBreakPlaceEvent(BlockEventAction.PLACE, event));
+        if (!event.isCancelled())
+            logAndSend(getLoggableBlockEvent(BlockEventAction.PLACE, event));
     }
+
 
     @EventHandler
     public void captureIgniteEvent(BlockIgniteEvent event) {
-
-        String cause = null;
-        switch ( event.getCause())
-        {
-            case ENDER_CRYSTAL:
-                cause = "ENDER_CRYSTAL";
-                break;
-            case EXPLOSION:
-                cause = "EXPLOSION";
-                break;
-            case FIREBALL:
-                cause = "FIREBALL";
-                break;
-            case FLINT_AND_STEEL:
-                cause = "FLINT_AND_STEEL";
-                break;
-            case LAVA:
-                cause = "LAVA";
-                break;
-            case LIGHTNING:
-                cause = "LIGHTNING";
-                break;
-            case SPREAD:
-                cause = "SPREAD";
-                break;
-        }
-        logAndSend(getLoggableBlockBreakPlaceEvent(BlockEventAction.IGNITE, event,cause));
-
+        if (!event.isCancelled())
+            logAndSend(getLoggableBlockEvent(BlockEventAction.IGNITE, event));
     }
 
-    private LoggableBlockEvent getLoggableBlockBreakPlaceEvent(BlockEventAction action, BlockEvent event) {
-        return getLoggableBlockBreakPlaceEvent(action, event, null);
-    }
 
-    private LoggableBlockEvent getLoggableBlockBreakPlaceEvent(BlockEventAction action, BlockEvent event, String tool_used) {
+    private LoggableBlockEvent getLoggableBlockEvent(BlockEventAction action, BlockEvent event) {
 
 
-
+        // Pull a couple of objects from the event.
         final Block block = event.getBlock();
-        final Location location = event.getBlock().getLocation();
-        final String baseType = block.getType().name();
-
+        final Location location = block.getLocation();
         final World world = block.getWorld();
 
+        Point3d coordinates = new Point3d(location.getX(), location.getY(), location.getZ());
 
-            if (tool_used != null && tool_used.equals("AIR")) {
-                tool_used = "FIST";
+
+        LoggableBlockEvent blockEvent = new LoggableBlockEvent(world.getFullTime(), minecraft_server, world.getName(), coordinates, action);
+
+
+        blockEvent.setBlock(new com.splunk.sharedmc.utilities.Block(block.getType().toString(), getBlockName(block)));
+
+
+        if (event instanceof BlockBreakEvent) {
+
+            blockEvent.setPlayer(((BlockBreakEvent) event).getPlayer().getName());
+
+
+            ItemStack instrument = ((BlockBreakEvent) event).getPlayer().getInventory().getItemInMainHand();
+            Instrument tool = new Instrument(instrument.getType().toString());
+            for (Enchantment key : instrument.getEnchantments().keySet()) {
+
+                tool.addEnchantment(key.getName().toString(), instrument.getEnchantments().get(key));
             }
 
-        String name;
+
+            blockEvent.setTool(tool);
+
+
+        } else if (event instanceof BlockPlaceEvent) {
+            blockEvent.setPlayer(((BlockPlaceEvent) event).getPlayer().getName());
+        } else if (event instanceof BlockIgniteEvent) {
+
+
+            switch (((BlockIgniteEvent) event).getCause()) {
+                case ENDER_CRYSTAL:
+                    blockEvent.setCause("ENDER_CRYSTAL");
+                    break;
+                case EXPLOSION:
+                    blockEvent.setCause("EXPLOSION");
+                    break;
+                case FIREBALL:
+                    blockEvent.setCause("FIREBALL");
+                    break;
+                case FLINT_AND_STEEL:
+                    blockEvent.setCause("FLINT_AND_STEEL");
+                    break;
+                case LAVA:
+                    blockEvent.setCause("LAVA");
+                    break;
+                case LIGHTNING:
+                    blockEvent.setCause("LIGHTNING");
+                    break;
+                case SPREAD:
+                    blockEvent.setCause("SPREAD");
+                    break;
+            }
+        }
+
+
+        return blockEvent;
+    }
+
+    public String getBlockName(Block block) {
+
+
         switch (block.getType()) {
             case STONE:
                 String[] StoneBlockNames = {
                         "STONE", "GRANITE", "POLISHED GRANITE", "DIORITE", "POLISHED_DIORITE",
                         "ANDESITE", "POLISHED_ANDESITE"
                 };
-                name = StoneBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return StoneBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case DIRT:
                 String[] DirtBlockNames = {
                         "DIRT", "COARSE DIRT", "PODZOL"
                 };
-                name = DirtBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return DirtBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case SAND:
                 String[] SandBlockNames = {
                         "SAND", "RED_SAND"
                 };
-                name = SandBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return SandBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case LOG:
                 String[] LogBlockNames = {
                         "OAK_LOG", "SPRUCE_LOG", "BIRCH_LOG", "JUNGLE_LOG"
                 };
-                name = LogBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return LogBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case LOG_2:
                 String[] Log2BlockNames = {
                         "ACACIA_LOG", "DARK_OAK_LOG"
                 };
-                name = Log2BlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return Log2BlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case LEAVES:
                 // multiple values represent decay states.
                 String[] LeavesBlockNames = {
@@ -146,8 +169,7 @@ public class BlockEventLogger extends AbstractEventLogger implements Listener {
                         "OAK_LEAVES", "SPRUCE_LEAVES", "BIRCH_LEAVES", "JUNGLE_LEAVES"
 
                 };
-                name = LeavesBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return LeavesBlockNames[block.getState().getData().toItemStack(1).getDurability()];
             case LEAVES_2:
                 // multiple values represent decay states.
                 String[] Leaves2BlockNames = {
@@ -157,48 +179,48 @@ public class BlockEventLogger extends AbstractEventLogger implements Listener {
                         "ACACIA_LEAVES", "DARK_OAK_LEAVES"
 
                 };
-                name = Leaves2BlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return Leaves2BlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case WOOD:
                 String[] woodBlockNames = {
                         "OAK_WOOD_PLANKS", "SPRUCE_WOOD_PLANKS", "BIRCH_WOOD_PLANKS", "JUNGLE_WOOD_PLANKS",
                         "ACACIA_WOOD_PLANKS", "DARK_OAK_WOOD_PLANKS"
                 };
-                name = woodBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return woodBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case SANDSTONE:
                 // multiple values represent decay states.
                 String[] SandStoneBlockNames = {
                         "SANDSTONE", "CHISELED_SANDSTONE", "SMOOTH_SANDSTONE"
                 };
-                name = SandStoneBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return SandStoneBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case RED_SANDSTONE:
                 // multiple values represent decay states.
                 String[] RedSandStoneBlockNames = {
                         "RED_SANDSTONE", "CHISELED_RED_SANDSTONE", "SMOOTH_RED_SANDSTONE"
                 };
-                name = RedSandStoneBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return RedSandStoneBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case RED_ROSE:
                 String[] RedRoseBlockNames = {
                         "POPPY", "BLUE_ORCHID", "ALLIUM", "AZURE_BLUET", "RED_TULIP", "ORANGE_TULIP", "WHITE_TULIP",
                         "PINK_TULIP", "OXEYE_DAISY"
                 };
-                name = RedRoseBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return RedRoseBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case YELLOW_FLOWER:
                 String[] YellowFlowerBlockNames = {
                         "DANDELION"
                 };
-                name = YellowFlowerBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return YellowFlowerBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case DOUBLE_PLANT:
                 String[] DoublePlantBlockNames = {
                         "SUNFLOWER", "LILAC", "DOUBLE_TALLGRASS", "LARGE_FERN", "ROSE_BUSH", "PEONY"
                 };
-                name = DoublePlantBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return DoublePlantBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case HARD_CLAY:
                 String[] HardenedClayBlockNames = {
                         "WHITE_HARDENED_CLAY", "ORANGE_HARDENED_CLAY", "MAGENTA_HARDENED_CLAY", "LIGHTBLUE_HARDENED_CLAY",
@@ -206,8 +228,8 @@ public class BlockEventLogger extends AbstractEventLogger implements Listener {
                         "LIGHTGRAY_HARDENED_CLAY", "CYAN_HARDENED_CLAY", "PURPLE_HARDENED_CLAY", "BLUE_HARDENED_CLAY",
                         "BROWN_HARDENED_CLAY", "GREEN_HARDENED_CLAY", "RED_HARDENED_CLAY", "BLACK_HARDENED_CLAY"
                 };
-                name = HardenedClayBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return HardenedClayBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case STAINED_CLAY:
                 String[] StainedClayBlockNames = {
                         "WHITE_STAINED_CLAY", "ORANGE_STAINED_CLAY", "MAGENTA_STAINED_CLAY", "LIGHTBLUE_STAINED_CLAY",
@@ -215,8 +237,8 @@ public class BlockEventLogger extends AbstractEventLogger implements Listener {
                         "LIGHTGRAY_STAINED_CLAY", "CYAN_STAINED_CLAY", "PURPLE_STAINED_CLAY", "BLUE_STAINED_CLAY",
                         "BROWN_STAINED_CLAY", "GREEN_STAINED_CLAY", "RED_STAINED_CLAY", "BLACK_STAINED_CLAY"
                 };
-                name = StainedClayBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return StainedClayBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case WOOL:
                 String[] WoolBlockNames = {
                         "WHITE_WOOL", "ORANGE_WOOL", "MAGENTA_WOOL", "LIGHTBLUE_WOOL",
@@ -224,59 +246,48 @@ public class BlockEventLogger extends AbstractEventLogger implements Listener {
                         "LIGHTGRAY_WOOL", "CYAN_WOOL", "PURPLE_WOOL", "BLUE_WOOL",
                         "BROWN_WOOL", "GREEN_WOOL", "RED_WOOL", "BLACK_WOOL"
                 };
-                name = WoolBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return WoolBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case SPONGE:
                 String[] SpongeBlockNames = {
                         "SPONGE", "WET_SPONGE"
                 };
 
-                name = SpongeBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return SpongeBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case DOUBLE_STEP:
                 String[] DoubleStoneSlabBlockNames = {"DOUBLE_STONE_SLAB", "DOUBLE_SANDSTONE_SLAB", "DOUBLE_WOODEN_SLAB", "DOUBLE_COBBLESTONE_SLAB",
                         "DOUBLE_BRICKS_SLAB", "DOUBLE_STONE_BRICK_SLAB", "DOUBLE_NETHER_BRICK_SLAB", "DOUBLE_QUARTZ_SLAB",
                         "SMOOTH_DOUBLE_STONE_SLAB", "SMOOTH_DOUBLE_SANDSTONE_SLAB"
                 };
-                name = DoubleStoneSlabBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return DoubleStoneSlabBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case STEP:
                 String[] StoneSlabBlockNames = {
                         "STONE_SLAB", "SANDSTONE_SLAB", "WOODEN_SLAB", "COBBLESTONE_SLAB",
                         "BRICKS_SLAB", "STONE_BRICK_SLAB", "NETHER_BRICK_SLAB", "QUARTZ_SLAB",
                         "SMOOTH_STONE_SLAB", "SMOOTH_SANDSTONE_SLAB"
                 };
-                name = StoneSlabBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return StoneSlabBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case WOOD_STEP:
                 String[] WoodSlabBlockNames = {
                         "OAK_WOOD_SLAB", "SPRUCE_WOOD_SLAB", "BIRCH_WOOD_SLAB", "JUNGLE_WOOD_SLAB",
                         "ACACIA_WOOD_SLAB", "DARK_OAK_WOOD_SLAB"
                 };
-                name = WoodSlabBlockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return WoodSlabBlockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             case PRISMARINE:
                 String[] PrismarineBLockNames = {
                         "PRISMARINE", "PRISMARINE_BRICKS", "DARK_PRISMARINE"
                 };
-                name = PrismarineBLockNames[block.getState().getData().toItemStack(1).getDurability()];
-                break;
+                return PrismarineBLockNames[block.getState().getData().toItemStack(1).getDurability()];
+
             default:
-                name = block.getType().name();
-                break;
+                return block.getType().name();
+
+
         }
-
-
-        final Point3dLong coords = new Point3dLong(location.getX(), location.getY(), location.getZ());
-        String playerName = null;
-
-        if (event instanceof BlockBreakEvent) {
-            playerName = ((BlockBreakEvent) event).getPlayer().getName();
-        } else if (event instanceof BlockPlaceEvent) {
-            playerName = ((BlockPlaceEvent) event).getPlayer().getName();
-        }
-
-        return new LoggableBlockEvent(action, world.getFullTime(), world.getName(), coords).setBlockName(name)
-                .setPlayerName(playerName).setBaseType(baseType).setToolUsed(tool_used);
     }
+
 }

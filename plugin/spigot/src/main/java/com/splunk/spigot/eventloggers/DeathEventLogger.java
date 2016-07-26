@@ -1,90 +1,87 @@
 package com.splunk.spigot.eventloggers;
 
-import static com.splunk.spigot.LogToSplunkPlugin.locationAsPoint;
+import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
+import com.splunk.sharedmc.loggable_events.LoggableDeathEvent;
+import com.splunk.sharedmc.loggable_events.LoggableDeathEvent.DeathEventAction;
+import com.splunk.sharedmc.utilities.Instrument;
+import com.splunk.sharedmc.utilities.Point3d;
 
-import java.util.List;
-import java.util.Properties;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.Skeleton;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.inventory.ItemStack;
 
-import com.google.common.collect.Lists;
-
-import com.splunk.sharedmc.Point3dLong;
-import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
-import com.splunk.sharedmc.loggable_events.LoggableDeathEvent;
+import java.util.Properties;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
- * Handles the logging of death events.
+ * Created by powerschill on 7/25/16.
  */
 public class DeathEventLogger extends AbstractEventLogger implements Listener {
-
-    /**
-     * Whether to turn off logging non-player related monster deaths. Monsters causing their own
-     * death generates a lot of spammy events. E.g. Bats flying into lava...
-     */
-    public static final boolean IGNORE_MONSTER_ACCIDENTS = true;
-
-    // ouch:
-    public static final List<String> monsterNames = Lists.newArrayList(
-            "Wolf", "Creeper", "Skeleton", "Blaze", "Cave Spider", "Spider", "Zombie Pigman", "Zombie", "Endermite",
-            "Enderman", "Magma Cube", "Witch", "Wither", "Guardian", "Ghast", "Slime", "Silverfish");
-
 
     public DeathEventLogger(Properties properties) {
         super(properties);
     }
 
-    /**
-     * Captures DeathEvents.
-     *
-     * @param event The captured BreakEvent.
-     */
     @EventHandler
     public void captureDeathEvent(EntityDeathEvent event) {
 
-        String killer = null;
-        long gameTime = event.getEntity().getWorld().getFullTime();
-        String world = event.getEntity().getWorld().getName();
-        Point3dLong location = locationAsPoint(event.getEntity().getLocation());
+        // Default to creature death. Will override if actual player death.
+        logAndSend(getLoggableDeathEvent(DeathEventAction.CREATURE, event));
+    }
+
+    private LoggableDeathEvent getLoggableDeathEvent(DeathEventAction action, EntityDeathEvent event) {
+
+        final Entity victim = event.getEntity();
+        final Location location = victim.getLocation();
+        final World world = victim.getWorld();
 
 
-        String victim = "";
+        Point3d coordinates = new Point3d(location.getX(), location.getY(), location.getZ());
 
+        LoggableDeathEvent deathEvent = new LoggableDeathEvent(world.getFullTime(), minecraft_server, world.getName(), coordinates, action);
 
-        LoggableDeathEvent deathEvent;
         if (event instanceof PlayerDeathEvent) {
-            // Player died
-            deathEvent = new LoggableDeathEvent(LoggableDeathEvent.DeathEventAction.PLAYER_DIED, gameTime, world, location);
-            victim = event.getEntity().getName();
+            // TODO switch this to use the enum.
+            deathEvent.setAction("player_death");
+            deathEvent.setVictim("player", victim.getName());
 
 
         } else {
-
-            //mob died
-            deathEvent = new LoggableDeathEvent(LoggableDeathEvent.DeathEventAction.MOB_DIED, gameTime, world, location);
-
-            victim = event.getEntityType().name();
             if (event.getEntityType() == EntityType.SKELETON) {
-                org.bukkit.entity.Skeleton skeleton = (org.bukkit.entity.Skeleton) event.getEntity();
-                victim = skeleton.getSkeletonType().name() + "_SKELETON";
+                Skeleton skeleton = (org.bukkit.entity.Skeleton) event.getEntity();
+                deathEvent.setVictim("creature", skeleton.getSkeletonType() + "_SKELETON");
+
+            } else {
+                deathEvent.setVictim("creature", victim.getName());
             }
         }
 
-        if (event.getEntity().getKiller() != null) {
-            // Player did the killing
-            killer = event.getEntity().getKiller().getDisplayName();
 
-            final String instrument = event.getEntity().getKiller().getInventory().getItemInMainHand().getData().toString();
-            deathEvent.setInstrument(instrument.replaceAll("\\(\\S*\\)", ""));
+        if (event.getEntity().getKiller() != null) {
+
+            deathEvent.setKiller("player", event.getEntity().getKiller().getDisplayName());
+            ItemStack instrument = event.getEntity().getKiller().getInventory().getItemInMainHand();
+            Instrument tool = new Instrument(instrument.getType().toString());
+            for (Enchantment key : instrument.getEnchantments().keySet()) {
+
+                tool.addEnchantment(key.getName().toString(), instrument.getEnchantments().get(key));
+            }
+
+
+            deathEvent.setWeapon(tool);
+
 
         } else {
-            // Mob did the killing
+            // Creature did killing and we have to get killer from death message
             if (event instanceof PlayerDeathEvent) {
                 // Only works if a player dies.
 
@@ -92,17 +89,15 @@ public class DeathEventLogger extends AbstractEventLogger implements Listener {
                 Matcher matcher = regex.matcher(((PlayerDeathEvent) event).getDeathMessage());
 
                 if (matcher.matches()) {
-                    killer = matcher.group("killer");
+                    deathEvent.setKiller("creature", matcher.group("killer"));
                 }
 
 
             }
         }
 
-        deathEvent.setKiller(killer);
-        deathEvent.setVictim(victim);
-        deathEvent.setDamageSource(event.getEntity().getLastDamageCause().getCause().name());
 
-        logAndSend(deathEvent);
+        return deathEvent;
     }
+
 }
