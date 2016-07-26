@@ -9,7 +9,7 @@ public class LoggableCreatureEvent extends AbstractLoggableEvent {
     private Entity entity;
 
     public LoggableCreatureEvent(long gameTime, String minecraft_server, String world, Point3d dest, EntityEventAction action) {
-        super(gameTime, minecraft_server, world, dest, "entity", action.asString());
+        super(gameTime, minecraft_server, world, dest, "creature", action.asString());
     }
 
 

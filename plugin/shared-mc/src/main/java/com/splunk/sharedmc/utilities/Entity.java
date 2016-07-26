@@ -7,6 +7,6 @@ public class Entity {
 
     public Entity(String type, String name) {
         this.type = type;
-        this.name = name;
+        this.name = name.replaceAll("§\\S", ""); // Remove the formatting codes;
     }
 }
