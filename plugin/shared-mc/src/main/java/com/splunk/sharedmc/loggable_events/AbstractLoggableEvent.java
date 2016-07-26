@@ -2,115 +2,126 @@ package com.splunk.sharedmc.loggable_events;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.splunk.logging.SplunkCimLogEvent;
-import com.splunk.sharedmc.Point3dLong;
+
+import com.splunk.sharedmc.utilities.Point3d;
+
 
 /**
- * Classes extending this benefit from a convenient way to get a Json representation, time of creation and event type,
- * world name, coordinates and location.
+ * Classes extending this benefit from a convenient way to get a Json representation, time of
+ * creation and event type, world name, coordinates and location.
  */
-public class AbstractLoggableEvent extends SplunkCimLogEvent implements LoggableEvent {
+public class AbstractLoggableEvent implements LoggableEvent {
+
     private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-    public static final String PLAYER_NAME = "player";
-    public static final String ENTITY_NAME = "entity";
-    public static final String CAUSE = "cause";
-    public static final String ACTION = "action";
+    protected String category;
+    private long gameTime;
+    private String minecraft_server;
+    private String world;
+    private Point3d dest;
+    private String action;
+
 
     /**
-     * General event type. Can be used to categorize events.
+     * Default Constructor
      */
-    private final LoggableEventType type;
+    public AbstractLoggableEvent(long gameTime, String minecraft_server, String world, Point3d dest, String category, String action) {
+        this.gameTime = gameTime;
+        this.minecraft_server = minecraft_server;
+        this.world = world;
+        this.dest = dest;
+        this.category = category;
+        this.action = action;
+    }
 
     /**
-     * Time of this objects initialization.
+     * @return the full in-game time on this world
      */
-    private final long time = System.currentTimeMillis();
+    public long getGameTime() {
+        return this.gameTime;
+    }
 
     /**
-     * The in-game time of this event.
+     * @param gameTime the full in-game time on this world
      */
-    private final long worldTime;
+    public void setGameTime(long gameTime) {
+        this.gameTime = gameTime;
+    }
+
 
     /**
-     * World the event occurred in.
+     * @return the name of user-defined Minecraft server
      */
-    private final String worldName;
+    public String getMinecraftServer() {
+        return this.minecraft_server;
+    }
 
     /**
-     * Coordinates where the event occurred.
+     * @param minecraft_server the name of user-defined Minecraft server
      */
-    private final Point3dLong coordinates;
+    public void setMinecraftServer(String minecraft_server) {
+        this.minecraft_server = minecraft_server;
+    }
 
     /**
-     * Constructor. Enforces that subclasses must have a loggable event type.
-     *
-     * @param type The type of event that this is.
+     * @return the name of the world
      */
-    public AbstractLoggableEvent(LoggableEventType type, long worldTime, String worldName, Point3dLong coordinates) {
-        super(type.getEventName(), "");
+    public String getWorld() {
+        return this.world;
+    }
 
-        this.type = type;
-        this.worldTime = worldTime;
-        this.worldName = worldName;
-        this.coordinates = coordinates;
+    /**
+     * @param world the name of the world
+     */
+    public void setWorld(String world) {
+        this.world = world;
+    }
 
+    /**
+     * @return the three dimensional location of the event
+     */
+    public Point3d getDest() {
+        return this.dest;
+    }
 
-        this.addField("game_time", worldTime);
-        if(worldName != null) {
-            this.addField("world", worldName);
-        }
-        this.addField("x", coordinates.xCoord);
-        this.addField("y", coordinates.yCoord);
-        this.addField("z", coordinates.zCoord);
+    /**
+     * @param dest the three dimensional location of the event
+     */
+    public void setDest(Point3d dest) {
+        this.dest = dest;
+    }
+
+    /**
+     * @return the category of the event
+     */
+    public String getCategory() {
+        return this.category;
+    }
+
+    /**
+     * @param category the category of the event
+     */
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    /**
+     * @return the event action
+     */
+    public String getAction() {
+        return this.action;
+    }
+
+    /**
+     * @param action the event action
+     */
+    public void setAction(String action) {
+        this.action = action;
     }
 
     @Override
-    public String toJson() {
+    public String toJSON() {
         return gson.toJson(this);
     }
 
-    @Override
-    public LoggableEventType getType() {
-        return type;
-    }
 
-    @Override
-    public long getTime() {
-        return time;
-    }
-
-    @Override
-    public long getWorldTime() {
-        return worldTime;
-    }
-
-    @Override
-    public String getWorldName() {
-        return worldName;
-    }
-
-    @Override
-    public Point3dLong getCoordinates() {
-        return coordinates;
-    }
-
-    @Override
-    public String getLocation() {
-        final StringBuilder b = new StringBuilder();
-        b.append("@ World: ").append(worldName);
-        if (getCoordinates() != null) {
-            b.append(", " + "x:").append(coordinates.xCoord).append(' ').append("y:").append(coordinates.yCoord)
-                    .append(' ').append("z:").append(coordinates.zCoord);
-        }
-        b.append(", WorldTime:").append(worldTime);
-        return b.toString();
-    }
-
-    @Override
-    public void addField(String key, Object value){
-        if(value == null){
-            return;
-        }
-        super.addField(key, value);
-    }
 }

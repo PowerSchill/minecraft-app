@@ -1,17 +1,5 @@
 package com.splunk.sharedmc;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.security.KeyManagementException;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
-
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
@@ -22,23 +10,28 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.json.simple.JSONObject;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+
 /**
  * Knows a single Splunk instance by its host:port and forwards data to it.
  */
 public class SingleSplunkConnection implements SplunkConnection, Runnable {
     private static final String LOGGER_PREFIX = "SplunkConnection - ";
     private static final String DEFAULT_RECONNECT_TIME = "10";
-    private String BASE_URL = "http://%s:%s/services/collector/event/1.0";
-
     /**
      * Interval in seconds between attempts to connect to Splunk.
      */
     private static final int RECONNECT_TIME =
             Integer.valueOf(System.getProperty("splunk_mc.reconnect_time", DEFAULT_RECONNECT_TIME));
-
     private final Logger logger;
     private final String url;
-
+    private String BASE_URL = "http://%s:%s/services/collector/event/1.0";
     private CloseableHttpClient httpClient;
 
     private String server;
@@ -49,7 +42,6 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
     private StringBuilder messagesOnRunway;
 
     private String hostname = "";
-
 
 
     /**
@@ -69,10 +61,9 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
 
         this.server = server;
 
-        try{
+        try {
             hostname = InetAddress.getLocalHost().getHostName();
-        }
-        catch (UnknownHostException e) {
+        } catch (UnknownHostException e) {
 
 
         }
@@ -112,8 +103,8 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
         // Create the Splunk HTTP Event Collector packet as defined in http://dev.splunk.com/view/event-collector/SP-CAAAE6M
         event.put("time", System.currentTimeMillis() / 1000L);
         event.put("host", hostname);
-        event.put("source","minecraft-app");
-        event.put("sourcetype","minecraft_log");
+        event.put("source", "minecraft-app");
+        event.put("sourcetype", "minecraft_log");
         event.put("event", message);
 
         messagesToSend.append(event.toString());

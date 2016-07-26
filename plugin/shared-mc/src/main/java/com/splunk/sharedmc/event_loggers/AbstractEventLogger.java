@@ -1,15 +1,15 @@
 package com.splunk.sharedmc.event_loggers;
 
-import java.util.Properties;
+import com.splunk.sharedmc.SingleSplunkConnection;
+import com.splunk.sharedmc.loggable_events.LoggableEvent;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import com.splunk.sharedmc.SingleSplunkConnection;
-import com.splunk.sharedmc.loggable_events.LoggableEvent;
+import java.util.Properties;
 
 /**
- * EventLoggers log to the Minecraft server console and send data to Splunk.
+ * EventLoggers log to the Minecraft minecraft_server console and send data to Splunk.
  */
 public class AbstractEventLogger {
     public static final String LOGGER_NAME = "LogToSplunk";
@@ -21,16 +21,14 @@ public class AbstractEventLogger {
     public static final String SPLUNK_TOKEN = "splunk.craft.token";
 
     protected static final Logger logger = LogManager.getLogger(LOGGER_NAME);
-
+    protected static String minecraft_server;
     private static SingleSplunkConnection connection;
-
     /**
-     * If true, events will be logged to the server console.
+     * If true, events will be logged to the minecraft_server console.
      */
     private static boolean logEventsToConsole;
     private static String host;
     private static int port;
-    private static String server;
     private static String token;
 
     public AbstractEventLogger(Properties properties) {
@@ -39,16 +37,17 @@ public class AbstractEventLogger {
             logEventsToConsole = Boolean.valueOf(properties.getProperty(LOG_EVENTS_TO_CONSOLE_PROP_KEY, "true"));
             host = properties.getProperty(SPLUNK_HOST, "127.0.0.1");
             port = Integer.valueOf(properties.getProperty(SPLUNK_PORT, "8088"));
-            server = properties.getProperty(MINECRAFT_SERVER,"default");
+            minecraft_server = properties.getProperty(MINECRAFT_SERVER, "default");
             token = properties.getProperty(SPLUNK_TOKEN);
-            if(token == null){
+            if (token == null) {
                 throw new IllegalArgumentException("The property `splunk.craft.token` must be set with the value of a" +
                         " splunk token in order to use the Splunk minecraft plugin/mod!");
             }
 
-            connection = new SingleSplunkConnection(host, port, server, token, true);
+            connection = new SingleSplunkConnection(host, port, minecraft_server, token, true);
         }
     }
+
 
     /**
      * Logs via slf4j-simple and forwards the message to the message preparer.
@@ -56,8 +55,8 @@ public class AbstractEventLogger {
      * @param loggable The message to log.
      */
     protected void logAndSend(LoggableEvent loggable) {
-        String message = loggable.toString().replace("\"", "").replaceAll("\\r\\n", "");
-        if(logEventsToConsole) {
+        String message = loggable.toJSON();
+        if (logEventsToConsole) {
             logger.info(message);
         }
         connection.sendToSplunk(message);

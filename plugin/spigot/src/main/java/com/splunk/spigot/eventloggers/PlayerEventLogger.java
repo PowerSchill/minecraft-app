@@ -1,155 +1,90 @@
 package com.splunk.spigot.eventloggers;
 
-import static com.splunk.spigot.LogToSplunkPlugin.locationAsPoint;
 
-import java.util.Properties;
+import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
+import com.splunk.sharedmc.loggable_events.LoggablePlayerEvent;
+import com.splunk.sharedmc.loggable_events.LoggablePlayerEvent.PlayerEventAction;
+import com.splunk.sharedmc.utilities.Entity;
+import com.splunk.sharedmc.utilities.Point3d;
 
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerLoginEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
-import org.bukkit.event.vehicle.VehicleMoveEvent;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheLoader;
+import java.util.Properties;
 
-import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
-import com.splunk.sharedmc.loggable_events.LoggablePlayerEvent;
-import com.splunk.sharedmc.loggable_events.LoggablePlayerEvent.PlayerEventAction;
-
-/**
- * Handles the logging of player events.
- */
 public class PlayerEventLogger extends AbstractEventLogger implements Listener {
-    public static final double GRANULARITY = 1.5;
-    public static final int MAX_PLAYERS = 128;
 
-    /**
-     * Keeps track players last positions, in a guava cache for it's eviction policy.
-     */
-    private final Cache<String, Location> lastKnownCoordinates =
-            CacheBuilder.newBuilder().maximumSize(MAX_PLAYERS).build(
-                    new CacheLoader<String, Location>() {
-                        @Override
-                        public Location load(String key) throws Exception {
-                            return lastKnownCoordinates.getIfPresent(key);
-                        }
-                    });
 
-    /**
-     * Constructs a new PlayerEventLogger.
-     *
-     * @param props Properties to configure this EventLogger with.
-     */
-    public PlayerEventLogger(Properties props) {
-        super(props);
-    }
-
-    /**
-     * Logs to Splunk when a player logs in.
-     *
-     * @param event The captured event.
-     */
-    @EventHandler
-    public void onPlayerConnect(PlayerLoginEvent event) {
-        logAndSend(
-                generateLoggablePlayerEvent(event, PlayerEventAction.PLAYER_CONNECT, null, null));
-    }
-
-    /**
-     * Logs to Splunk when a player logs out.
-     *
-     * @param event The captured event.
-     */
-    @EventHandler
-    public void onPlayerDisconnect(PlayerKickEvent event) {
-        logAndSend(
-                generateLoggablePlayerEvent(
-                        event, PlayerEventAction.PLAYER_DISCONNECT, event.getReason(), event.getLeaveMessage()));
+    public PlayerEventLogger(Properties properties) {
+        super(properties);
     }
 
     @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        logAndSend(
-                generateLoggablePlayerEvent(
-                        event, PlayerEventAction.PLAYER_DISCONNECT, null, event.getQuitMessage()));
+    public void captureLoginEvent(PlayerLoginEvent event) {
+        logAndSend(getLoggablePlayerEvent(PlayerEventAction.PLAYER_LOGIN, event));
+
     }
 
     @EventHandler
-    public void onPlayerTeleport(PlayerTeleportEvent event) {
-        Location previous = lastKnownCoordinates.getIfPresent(event.getPlayer().getDisplayName());
-
-        String cause = event.getCause().name();
-
-        logAndSend(
-                generateLoggablePlayerEvent(
-                        event, PlayerEventAction.TELEPORT, cause, null));
+    public void captureLogoutEvent(PlayerKickEvent event) {
+        logAndSend(getLoggablePlayerEvent(PlayerEventAction.PLAYER_LOGOUT, event));
     }
 
     @EventHandler
-    public void onPlayerMove(PlayerMoveEvent event) {
-        Location previous = lastKnownCoordinates.getIfPresent(event.getPlayer().getDisplayName());
+    public void captureLogoutEvent(PlayerQuitEvent event) {
+        logAndSend(getLoggablePlayerEvent(PlayerEventAction.PLAYER_LOGOUT, event));
+    }
 
-        if (previous != null && event.getFrom().getWorld().getName() == previous.getWorld().getName() && previous.distance(event.getTo()) < GRANULARITY) {
-            return;
+    @EventHandler
+    public void captureTeleportEvent(PlayerTeleportEvent event) {
+        logAndSend(getLoggablePlayerEvent(PlayerEventAction.TELEPORT, event));
+    }
+
+    @EventHandler
+    public void captureMoveEvent(PlayerMoveEvent event) {
+        logAndSend(getLoggablePlayerEvent(PlayerEventAction.MOVE, event));
+    }
+
+
+    private LoggablePlayerEvent getLoggablePlayerEvent(PlayerEventAction action, PlayerEvent event) {
+
+        final Player player = event.getPlayer();
+        final Location location = player.getLocation();
+        final World world = player.getWorld();
+
+        Point3d coordinates = new Point3d(location.getX(), location.getY(), location.getZ());
+
+        LoggablePlayerEvent playerEvent = new LoggablePlayerEvent(world.getFullTime(), minecraft_server, world.getName(), coordinates, action);
+
+        Entity eventPlayer = new Entity("player", player.getDisplayName());
+
+        playerEvent.setPlayer(eventPlayer);
+
+        if (event instanceof PlayerMoveEvent) {
+
+            // Teleport is a child class so this is to allow us to identify the child class
+            if (event instanceof PlayerTeleportEvent)
+                playerEvent.setAction("Teleport"); // Should use the action enum instead of the string.
+
+            // The coordinates from the event and the destination of the move event are slightly different so this corrects that.
+            Point3d destination = new Point3d(((PlayerMoveEvent) event).getTo().getX(), ((PlayerMoveEvent) event).getTo().getY(), ((PlayerMoveEvent) event).getTo().getZ());
+            playerEvent.setDest(destination);
+
+
+            Point3d source = new Point3d(((PlayerMoveEvent) event).getFrom().getX(), ((PlayerMoveEvent) event).getFrom().getY(), ((PlayerMoveEvent) event).getFrom().getZ());
+            playerEvent.setSrc(source);
+
         }
+        return playerEvent;
 
-        logAndSend(
-                generateLoggablePlayerEvent(
-                        event, PlayerEventAction.MOVE, null, null));
-    }
-
-    @EventHandler
-    public void OnPlayerEmpty(PlayerBucketEmptyEvent event) {
-        logAndSend(
-                generateLoggablePlayerEvent(
-                        event, PlayerEventAction.EMPTY, null, null, event.getBucket().name()));
-    }
-
-    private LoggablePlayerEvent generateLoggablePlayerEvent(
-            PlayerEvent event, PlayerEventAction actionType, String reason, String message) {
-        return generateLoggablePlayerEvent(event, actionType, reason, message, null);
-    }
-
-    private LoggablePlayerEvent generateLoggablePlayerEvent(
-            PlayerEvent event, PlayerEventAction actionType, String reason, String message, String item) {
-        final World world = event.getPlayer().getWorld();
-        final long worldTime = world.getFullTime();
-        final String worldName = world.getName();
-        final LoggablePlayerEvent loggable = new LoggablePlayerEvent(
-                actionType, worldTime, worldName, locationAsPoint(event.getPlayer().getLocation()));
-
-
-        loggable.setPlayerName(event.getPlayer().getDisplayName());
-        if ((reason != null) || (reason == ""))
-            loggable.setReason(reason);
-        if ((message != null) || (message == ""))
-            loggable.setMessage(message);
-        if ((item != null) || (item != ""))
-            loggable.setItem(item);
-
-        if (event.getClass().equals(PlayerMoveEvent.class) || event.getClass().equals(PlayerTeleportEvent.class)) {
-
-            loggable.setFrom(
-                    locationAsPoint(lastKnownCoordinates.getIfPresent(event.getPlayer().getDisplayName())));
-
-            if (loggable.getFrom() == null) {
-                loggable.setFrom(locationAsPoint(((PlayerMoveEvent) event).getFrom()));
-            }
-            loggable.setTo(locationAsPoint(((PlayerMoveEvent) event).getTo()));
-            lastKnownCoordinates.put(event.getPlayer().getDisplayName(), ((PlayerMoveEvent) event).getTo());
-        }
-
-        return loggable;
     }
 }
