@@ -1,25 +1,33 @@
 package com.splunk.sharedmc.loggable_events;
 
 
-import com.splunk.sharedmc.utilities.Entity;
+import com.splunk.sharedmc.utilities.LivingEntity;
 import com.splunk.sharedmc.utilities.Point3d;
 
 public class LoggablePlayerEvent extends AbstractLoggableEvent {
 
 
-    private Entity player;
+    private LivingEntity player;
     private Point3d src;
+    private Point3d dest;
 
-    public LoggablePlayerEvent(long gameTime, String minecraft_server, String world, Point3d dest, LoggablePlayerEvent.PlayerEventAction action) {
-        super(gameTime, minecraft_server, world, dest, "player", action.asString());
+    public LoggablePlayerEvent(long gameTime, String minecraft_server, String world, LoggablePlayerEvent.PlayerEventAction action) {
+        super(gameTime, minecraft_server, world, "player", action.asString());
     }
 
+    public Point3d getDest() {
+        return dest;
+    }
 
-    public Entity getPlayer() {
+    public void setDest(Point3d dest) {
+        this.dest = dest;
+    }
+
+    public LivingEntity getPlayer() {
         return this.player;
     }
 
-    public void setPlayer(Entity player) {
+    public void setPlayer(LivingEntity player) {
         this.player = player;
     }
 

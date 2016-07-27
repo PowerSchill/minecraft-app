@@ -3,7 +3,7 @@ package com.splunk.sharedmc.loggable_events;
 
 import com.splunk.sharedmc.utilities.Block;
 import com.splunk.sharedmc.utilities.Instrument;
-import com.splunk.sharedmc.utilities.Point3d;
+import com.splunk.sharedmc.utilities.LivingEntity;
 
 /**
  * Almost pojo with fields for information that might be associated with a block event.
@@ -12,12 +12,20 @@ public class LoggableBlockEvent extends AbstractLoggableEvent {
 
 
     private Block block;
-    private String player;
+    private LivingEntity player;
     private Instrument tool;
     private String cause;
 
-    public LoggableBlockEvent(long gameTime, String minecraft_server, String world, Point3d dest, BlockEventAction action) {
-        super(gameTime, minecraft_server, world, dest, "block", action.asString());
+    public LoggableBlockEvent(long gameTime, String minecraft_server, String world, BlockEventAction action) {
+        super(gameTime, minecraft_server, world, "block", action.asString());
+    }
+
+    public LivingEntity getPlayer() {
+        return player;
+    }
+
+    public void setPlayer(LivingEntity player) {
+        this.player = player;
     }
 
     public Block getBlock() {
@@ -28,14 +36,6 @@ public class LoggableBlockEvent extends AbstractLoggableEvent {
         this.block = block;
     }
 
-
-    public String getPlayer() {
-        return this.player;
-    }
-
-    public void setPlayer(String player) {
-        this.player = player;
-    }
 
     public Instrument getTool() {
         return this.tool;

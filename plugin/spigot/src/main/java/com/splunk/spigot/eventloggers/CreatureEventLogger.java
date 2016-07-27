@@ -3,6 +3,7 @@ package com.splunk.spigot.eventloggers;
 import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
 import com.splunk.sharedmc.loggable_events.LoggableCreatureEvent;
 import com.splunk.sharedmc.loggable_events.LoggableCreatureEvent.EntityEventAction;
+import com.splunk.sharedmc.utilities.LivingEntity;
 import com.splunk.sharedmc.utilities.Point3d;
 
 import org.bukkit.Location;
@@ -38,14 +39,16 @@ public class CreatureEventLogger extends AbstractEventLogger implements Listener
 
         Point3d coordinates = new Point3d(location.getX(), location.getY(), location.getZ());
 
-        LoggableCreatureEvent entityEvent = new LoggableCreatureEvent(world.getFullTime(), minecraft_server, world.getName(), coordinates, action);
+        LoggableCreatureEvent entityEvent = new LoggableCreatureEvent(world.getFullTime(), minecraft_server, world.getName(), action);
 
         if (event.getEntityType() == EntityType.SKELETON) {
             Skeleton skeleton = (org.bukkit.entity.Skeleton) event.getEntity();
-            entityEvent.setEntity("creature", skeleton.getSkeletonType() + "_SKELETON");
+
+            entityEvent.setEntity(new LivingEntity("creature", skeleton.getSkeletonType() + "_SKELETON", coordinates));
 
         } else {
-            entityEvent.setEntity("creature", event.getEntityType().name());
+
+            entityEvent.setEntity(new LivingEntity("creature", event.getEntityType().name(), coordinates));
         }
 
         return entityEvent;

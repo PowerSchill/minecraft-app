@@ -55,6 +55,8 @@ public class AbstractEventLogger {
      * @param loggable The message to log.
      */
     protected void logAndSend(LoggableEvent loggable) {
+
+
         String message = loggable.toJSON();
         if (logEventsToConsole) {
             logger.info(message);

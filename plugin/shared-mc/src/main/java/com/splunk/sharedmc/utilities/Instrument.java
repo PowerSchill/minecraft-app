@@ -3,9 +3,6 @@ package com.splunk.sharedmc.utilities;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Created by giy4 on 7/23/16.
- */
 public class Instrument {
 
     private String item;
@@ -19,18 +16,10 @@ public class Instrument {
     }
 
 
-    public void addEnchantment(String item, int level) {
-        Enchantment enchantment = new Enchantment(item, level);
+    public void addEnchantment(String item) {
 
 
-        addEnchantment(enchantment);
-    }
-
-    public void addEnchantment(Enchantment enchantment) {
-
-
-        enchantments.add(enchantment);
-
+        enchantments.add(item);
     }
 
 

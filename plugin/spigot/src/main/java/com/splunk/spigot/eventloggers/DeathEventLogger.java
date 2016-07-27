@@ -4,6 +4,7 @@ import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
 import com.splunk.sharedmc.loggable_events.LoggableDeathEvent;
 import com.splunk.sharedmc.loggable_events.LoggableDeathEvent.DeathEventAction;
 import com.splunk.sharedmc.utilities.Instrument;
+import com.splunk.sharedmc.utilities.LivingEntity;
 import com.splunk.sharedmc.utilities.Point3d;
 
 import org.bukkit.Location;
@@ -45,35 +46,38 @@ public class DeathEventLogger extends AbstractEventLogger implements Listener {
         final World world = victim.getWorld();
 
 
-        Point3d coordinates = new Point3d(location.getX(), location.getY(), location.getZ());
+        Point3d victimLocation = new Point3d(location.getX(), location.getY(), location.getZ());
 
-        LoggableDeathEvent deathEvent = new LoggableDeathEvent(world.getFullTime(), minecraft_server, world.getName(), coordinates, action);
+        LoggableDeathEvent deathEvent = new LoggableDeathEvent(world.getFullTime(), minecraft_server, world.getName(), action);
 
         if (event instanceof PlayerDeathEvent) {
             // TODO switch this to use the enum.
             deathEvent.setAction("player_death");
-            deathEvent.setVictim("player", victim.getName());
+            deathEvent.setVictim(new LivingEntity("player", victim.getName(), victimLocation));
 
 
         } else {
             if (event.getEntityType() == EntityType.SKELETON) {
                 Skeleton skeleton = (org.bukkit.entity.Skeleton) event.getEntity();
-                deathEvent.setVictim("creature", skeleton.getSkeletonType() + "_SKELETON");
+                deathEvent.setVictim(new LivingEntity("creature", skeleton.getSkeletonType() + "_SKELETON", victimLocation));
+
 
             } else {
-                deathEvent.setVictim("creature", victim.getName());
+                deathEvent.setVictim(new LivingEntity("creature", victim.getName(), victimLocation));
+
             }
         }
 
 
         if (event.getEntity().getKiller() != null) {
 
-            deathEvent.setKiller("player", event.getEntity().getKiller().getDisplayName());
+            Point3d killerLocation = new Point3d(event.getEntity().getKiller().getLocation().getX(),event.getEntity().getKiller().getLocation().getY(),event.getEntity().getKiller().getLocation().getZ());
+            deathEvent.setKiller(new LivingEntity("player", event.getEntity().getKiller().getDisplayName(),killerLocation));
             ItemStack instrument = event.getEntity().getKiller().getInventory().getItemInMainHand();
             Instrument tool = new Instrument(instrument.getType().toString());
             for (Enchantment key : instrument.getEnchantments().keySet()) {
 
-                tool.addEnchantment(key.getName().toString(), instrument.getEnchantments().get(key));
+                tool.addEnchantment(key.getName().toString() + ":" + instrument.getEnchantments().get(key));
             }
 
 
@@ -89,7 +93,9 @@ public class DeathEventLogger extends AbstractEventLogger implements Listener {
                 Matcher matcher = regex.matcher(((PlayerDeathEvent) event).getDeathMessage());
 
                 if (matcher.matches()) {
-                    deathEvent.setKiller("creature", matcher.group("killer"));
+
+                    deathEvent.setKiller(new LivingEntity("creature", matcher.group("killer")));
+
                 }
 
 

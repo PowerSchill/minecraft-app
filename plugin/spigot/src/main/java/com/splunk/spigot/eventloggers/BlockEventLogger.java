@@ -4,12 +4,14 @@ import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
 import com.splunk.sharedmc.loggable_events.LoggableBlockEvent;
 import com.splunk.sharedmc.loggable_events.LoggableBlockEvent.BlockEventAction;
 import com.splunk.sharedmc.utilities.Instrument;
+import com.splunk.sharedmc.utilities.LivingEntity;
 import com.splunk.sharedmc.utilities.Point3d;
 
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.enchantments.Enchantment;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -66,25 +68,26 @@ public class BlockEventLogger extends AbstractEventLogger implements Listener {
         final Location location = block.getLocation();
         final World world = block.getWorld();
 
-        Point3d coordinates = new Point3d(location.getX(), location.getY(), location.getZ());
 
+        LoggableBlockEvent blockEvent = new LoggableBlockEvent(world.getFullTime(), minecraft_server, world.getName(), action);
 
-        LoggableBlockEvent blockEvent = new LoggableBlockEvent(world.getFullTime(), minecraft_server, world.getName(), coordinates, action);
-
-
-        blockEvent.setBlock(new com.splunk.sharedmc.utilities.Block(block.getType().toString(), getBlockName(block)));
+        Point3d boxLocation = new Point3d(location.getX(), location.getY(), location.getZ());
+        blockEvent.setBlock(new com.splunk.sharedmc.utilities.Block(block.getType().toString(), getBlockName(block), boxLocation));
 
 
         if (event instanceof BlockBreakEvent) {
 
-            blockEvent.setPlayer(((BlockBreakEvent) event).getPlayer().getName());
+            Player player = ((BlockBreakEvent) event).getPlayer();
+
+            LivingEntity spEntity = new LivingEntity("player", player.getDisplayName(), new Point3d(player.getLocation().getX(), player.getLocation().getY(), player.getLocation().getZ()));
+            blockEvent.setPlayer(spEntity);
 
 
             ItemStack instrument = ((BlockBreakEvent) event).getPlayer().getInventory().getItemInMainHand();
             Instrument tool = new Instrument(instrument.getType().toString());
             for (Enchantment key : instrument.getEnchantments().keySet()) {
 
-                tool.addEnchantment(key.getName().toString(), instrument.getEnchantments().get(key));
+                tool.addEnchantment(key.getName().toString() + ":" + instrument.getEnchantments().get(key));
             }
 
 
@@ -92,7 +95,10 @@ public class BlockEventLogger extends AbstractEventLogger implements Listener {
 
 
         } else if (event instanceof BlockPlaceEvent) {
-            blockEvent.setPlayer(((BlockPlaceEvent) event).getPlayer().getName());
+            Player player = ((BlockPlaceEvent) event).getPlayer();
+
+            LivingEntity spEntity = new LivingEntity("player", player.getDisplayName(), new Point3d(player.getLocation().getX(), player.getLocation().getY(), player.getLocation().getZ()));
+            blockEvent.setPlayer(spEntity);
         } else if (event instanceof BlockIgniteEvent) {
 
 

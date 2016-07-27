@@ -3,8 +3,6 @@ package com.splunk.sharedmc.loggable_events;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import com.splunk.sharedmc.utilities.Point3d;
-
 
 /**
  * Classes extending this benefit from a convenient way to get a Json representation, time of
@@ -17,18 +15,18 @@ public class AbstractLoggableEvent implements LoggableEvent {
     private long gameTime;
     private String minecraft_server;
     private String world;
-    private Point3d dest;
+
     private String action;
 
 
     /**
      * Default Constructor
      */
-    public AbstractLoggableEvent(long gameTime, String minecraft_server, String world, Point3d dest, String category, String action) {
+    public AbstractLoggableEvent(long gameTime, String minecraft_server, String world, String category, String action) {
         this.gameTime = gameTime;
         this.minecraft_server = minecraft_server;
         this.world = world;
-        this.dest = dest;
+
         this.category = category;
         this.action = action;
     }
@@ -76,19 +74,6 @@ public class AbstractLoggableEvent implements LoggableEvent {
         this.world = world;
     }
 
-    /**
-     * @return the three dimensional location of the event
-     */
-    public Point3d getDest() {
-        return this.dest;
-    }
-
-    /**
-     * @param dest the three dimensional location of the event
-     */
-    public void setDest(Point3d dest) {
-        this.dest = dest;
-    }
 
     /**
      * @return the category of the event

@@ -4,7 +4,7 @@ package com.splunk.spigot.eventloggers;
 import com.splunk.sharedmc.event_loggers.AbstractEventLogger;
 import com.splunk.sharedmc.loggable_events.LoggablePlayerEvent;
 import com.splunk.sharedmc.loggable_events.LoggablePlayerEvent.PlayerEventAction;
-import com.splunk.sharedmc.utilities.Entity;
+import com.splunk.sharedmc.utilities.LivingEntity;
 import com.splunk.sharedmc.utilities.Point3d;
 
 import org.bukkit.Location;
@@ -63,9 +63,9 @@ public class PlayerEventLogger extends AbstractEventLogger implements Listener {
 
         Point3d coordinates = new Point3d(location.getX(), location.getY(), location.getZ());
 
-        LoggablePlayerEvent playerEvent = new LoggablePlayerEvent(world.getFullTime(), minecraft_server, world.getName(), coordinates, action);
+        LoggablePlayerEvent playerEvent = new LoggablePlayerEvent(world.getFullTime(), minecraft_server, world.getName(), action);
 
-        Entity eventPlayer = new Entity("player", player.getDisplayName());
+        LivingEntity eventPlayer = new LivingEntity("player", player.getDisplayName());
 
         playerEvent.setPlayer(eventPlayer);
 
@@ -78,7 +78,6 @@ public class PlayerEventLogger extends AbstractEventLogger implements Listener {
             // The coordinates from the event and the destination of the move event are slightly different so this corrects that.
             Point3d destination = new Point3d(((PlayerMoveEvent) event).getTo().getX(), ((PlayerMoveEvent) event).getTo().getY(), ((PlayerMoveEvent) event).getTo().getZ());
             playerEvent.setDest(destination);
-
 
             Point3d source = new Point3d(((PlayerMoveEvent) event).getFrom().getX(), ((PlayerMoveEvent) event).getFrom().getY(), ((PlayerMoveEvent) event).getFrom().getZ());
             playerEvent.setSrc(source);

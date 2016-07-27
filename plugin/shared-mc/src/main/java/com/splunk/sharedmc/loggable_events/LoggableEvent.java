@@ -35,15 +35,6 @@ public interface LoggableEvent {
      */
     void setWorld(String world);
 
-    /**
-     * @return the three dimensional location of the event
-     */
-    Point3d getDest();
-
-    /**
-     * @param dest the three dimensional location of the event
-     */
-    void setDest(Point3d dest);
 
     /**
      * @return the category of the event
