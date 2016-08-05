@@ -94,9 +94,7 @@ public class SingleSplunkConnection implements SplunkConnection, Runnable {
      */
     @Override
     public void sendToSplunk(String message) {
-
-        // append the name of the server to the event record.
-        message = message + " server=" + (this.server).trim();
+        
 
         JSONObject event = new JSONObject();
 
